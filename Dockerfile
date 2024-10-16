@@ -1,6 +1,7 @@
 # Build Stage
 FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /app
+RUN mkdir -p /data/db
 COPY . .
 RUN mvn clean package -DskipTests=true
 

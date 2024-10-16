@@ -1,29 +1,25 @@
 package dev.mehdizebhi.twitchtelegrambot.config;
 
-import com.github.twitch4j.ITwitchClient;
 import com.github.twitch4j.eventsub.events.StreamOnlineEvent;
+import com.github.twitch4j.eventsub.subscriptions.SubscriptionTypes;
 import dev.mehdizebhi.twitchtelegrambot.event.StreamChannelLiveEvent;
-import dev.mehdizebhi.twitchtelegrambot.internal.AuthenticationService;
 import dev.mehdizebhi.twitchtelegrambot.internal.EventSubConduit;
+import dev.mehdizebhi.twitchtelegrambot.internal.StreamService;
+import dev.mehdizebhi.twitchtelegrambot.persistence.entity.EventSubscription;
+import dev.mehdizebhi.twitchtelegrambot.persistence.repository.EventSubscriptionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 
-import java.util.List;
-
 @Configuration
 public class LifeCycleConfig {
 
-    @Autowired private ITwitchClient twitchClient;
-    @Autowired private AuthenticationService authenticationService;
     @Autowired private EventSubConduit eventSubConduit;
     @Autowired private ApplicationEventPublisher eventPublisher;
-
-    @Value("${twitch.username}")
-    private String twitchUsername;
+    @Autowired private StreamService streamService;
+    @Autowired private EventSubscriptionRepository eventSubscriptionRepository;
 
     @EventListener(ContextRefreshedEvent.class)
     public void applicationReady() {
@@ -31,12 +27,14 @@ public class LifeCycleConfig {
     }
 
     private void subscribeStreamOnlineEvent() {
-        authenticationService.accessToken().ifPresent(accessToken -> {
-            var list = twitchClient.getHelix().getUsers(accessToken, null, List.of(twitchUsername)).execute();
-            if (!list.getUsers().isEmpty()) {
-                eventSubConduit.registerStreamOnline(list.getUsers().getFirst().getId());
-                eventSubConduit.registerEventHandler(StreamOnlineEvent.class, e -> eventPublisher.publishEvent(new StreamChannelLiveEvent(this, e)));
-            }
+        streamService.removeAllEventSubscription();
+        streamService.getAllTwitchIds().forEach(twitchId -> {
+            eventSubConduit.registerStreamOnline(twitchId).ifPresent(subscriptionId -> {
+                streamService.getById(twitchId).ifPresent(stream -> {
+                    eventSubscriptionRepository.save(new EventSubscription(subscriptionId, SubscriptionTypes.STREAM_ONLINE.getName(), stream));
+                });
+            });
         });
+        eventSubConduit.registerEventHandler(StreamOnlineEvent.class, e -> eventPublisher.publishEvent(new StreamChannelLiveEvent(this, e)));
     }
 }

@@ -3,6 +3,7 @@ package dev.mehdizebhi.twitchtelegrambot.event;
 import com.github.twitch4j.TwitchClient;
 import dev.mehdizebhi.twitchtelegrambot.bot.TwinifyBot;
 import dev.mehdizebhi.twitchtelegrambot.constant.MessageTemplate;
+import dev.mehdizebhi.twitchtelegrambot.internal.StreamService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,7 @@ public class GeneralEventListener {
 
     @Autowired private TwitchClient twitchClient;
     @Autowired private TwinifyBot twinifyBot;
+    @Autowired private StreamService streamService;
 
     @EventListener(StreamChannelLiveEvent.class)
     public void streamChannelLiveEventListener(final StreamChannelLiveEvent event) {
@@ -30,7 +32,7 @@ public class GeneralEventListener {
                     stream.getGameName(),
                     stream.getViewerCount(),
                     stream.getUserLogin());
-            twinifyBot.getGruopIds().forEach(chatId -> {
+            streamService.getGroupsByTwitchId(stream.getUserId()).forEach(chatId -> {
                 twinifyBot.getTelegramClient()
                         .executeAsync(
                                 SendPhoto.builder()
