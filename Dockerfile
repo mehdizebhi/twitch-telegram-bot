@@ -7,6 +7,6 @@ RUN mvn clean package -DskipTests=true
 # Run Stage
 FROM eclipse-temurin:21-jdk
 WORKDIR /app
-RUN mkdir var/lib/data
+RUN mkdir -p var/lib/data
 COPY --from=builder /app/target/*.jar app.jar
 CMD ["java", "-jar", "app.jar"]
