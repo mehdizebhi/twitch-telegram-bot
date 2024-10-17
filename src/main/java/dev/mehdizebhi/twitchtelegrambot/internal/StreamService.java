@@ -1,6 +1,5 @@
 package dev.mehdizebhi.twitchtelegrambot.internal;
 
-import com.github.twitch4j.TwitchClient;
 import com.github.twitch4j.eventsub.subscriptions.SubscriptionTypes;
 import dev.mehdizebhi.twitchtelegrambot.persistence.entity.EventSubscription;
 import dev.mehdizebhi.twitchtelegrambot.persistence.entity.Stream;
@@ -82,12 +81,13 @@ public class StreamService {
                 stream.removeGroup(groupOpt.get());
                 groupOpt.get().removeStream(stream);
                 var savedStream = streamRepository.save(stream);
-                if (savedStream.getGroups().isEmpty()) {
+                // TODO: Remove all eventsub subscription if there is no group for this twitch stream
+                /*if (savedStream.getGroups().isEmpty()) {
                     savedStream.getSubscriptions().forEach(eventSubscription -> {
                         eventSubConduit.removeSubscription(eventSubscription.getId());
                     });
                     eventSubscriptionRepository.deleteAllByStream_TwitchId(twitchId);
-                }
+                }*/
             }
         });
     }
@@ -97,9 +97,15 @@ public class StreamService {
         eventSubscriptionRepository.deleteAll();
     }
 
-    public Set<Long> getGroupsByTwitchId(String twitchId) {
+    public Set<Long> getGroupIdsByTwitchId(String twitchId) {
         return streamRepository.findByTwitchId(twitchId)
                 .map(stream -> stream.getGroups().stream().map(TelegramGroup::getChatId).collect(Collectors.toSet()))
+                .orElseGet(Set::of);
+    }
+
+    public Set<TelegramGroup> getGroupsByTwitchId(String twitchId) {
+        return streamRepository.findByTwitchId(twitchId)
+                .map(Stream::getGroups)
                 .orElseGet(Set::of);
     }
 
@@ -109,5 +115,13 @@ public class StreamService {
 
     public Optional<Stream> getById(String twitchId) {
         return streamRepository.findByTwitchId(twitchId);
+    }
+
+    public void addChannelIdToGroup(Long chatId, String channelId) {
+        telegramGroupRepository.findByChatId(chatId)
+                .ifPresent(telegramGroup -> {
+                    telegramGroup.setChannelId(channelId);
+                    telegramGroupRepository.save(telegramGroup);
+                });
     }
 }

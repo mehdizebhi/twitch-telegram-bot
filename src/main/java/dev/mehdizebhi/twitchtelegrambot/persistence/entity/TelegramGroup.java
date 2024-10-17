@@ -12,6 +12,8 @@ public class TelegramGroup {
     @Id
     private Long chatId;
 
+    private String channelId;
+
     @ManyToMany(mappedBy = "groups")
     private Set<Stream> streams;
 
@@ -41,6 +43,14 @@ public class TelegramGroup {
 
     public void setStreams(Set<Stream> streams) {
         this.streams = streams;
+    }
+
+    public String getChannelId() {
+        return channelId;
+    }
+
+    public void setChannelId(String channelId) {
+        this.channelId = channelId;
     }
 
     public void addStream(Stream stream) {

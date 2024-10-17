@@ -32,15 +32,25 @@ public class GeneralEventListener {
                     stream.getGameName(),
                     stream.getViewerCount(),
                     stream.getUserLogin());
-            streamService.getGroupsByTwitchId(stream.getUserId()).forEach(chatId -> {
+            streamService.getGroupsByTwitchId(stream.getUserId()).forEach(group -> {
                 twinifyBot.getTelegramClient()
                         .executeAsync(
                                 SendPhoto.builder()
-                                        .chatId(chatId)
+                                        .chatId(group.getChatId())
                                         .photo(new InputFile(stream.getThumbnailUrl(1920, 1080)))
                                         .caption(caption)
                                         .build()
                         );
+                if (group.getChannelId() != null) {
+                    twinifyBot.getTelegramClient()
+                            .executeAsync(
+                                    SendPhoto.builder()
+                                            .chatId(group.getChannelId())
+                                            .photo(new InputFile(stream.getThumbnailUrl(1920, 1080)))
+                                            .caption(caption)
+                                            .build()
+                            );
+                }
             });
         }
     }
