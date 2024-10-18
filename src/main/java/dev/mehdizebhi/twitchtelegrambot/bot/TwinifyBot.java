@@ -1,8 +1,10 @@
 package dev.mehdizebhi.twitchtelegrambot.bot;
 
 import com.github.twitch4j.TwitchClient;
+import dev.mehdizebhi.twitchtelegrambot.constant.BotMessage;
 import dev.mehdizebhi.twitchtelegrambot.constant.MessageTemplate;
 import dev.mehdizebhi.twitchtelegrambot.internal.StreamService;
+import dev.mehdizebhi.twitchtelegrambot.util.TimeUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.abilitybots.api.bot.AbilityBot;
@@ -47,12 +49,12 @@ public class TwinifyBot extends AbilityBot {
                         if (!userList.isEmpty()) {
                             var twitchId = userList.getFirst().getId();
                             streamService.addGroup(twitchId, ctx.chatId());
-                            silent.send("Twitch live notification has been activated for this group.", ctx.chatId());
+                            silent.send(BotMessage.TWITCH_NOTIFICATION_ADDED.formatted(userList.getFirst().getDisplayName()), ctx.chatId());
                         } else {
-                            silent.send("No Twitch user found with this username: %s".formatted(twitchUsername), ctx.chatId());
+                            silent.send(BotMessage.TWITCH_USERNAME_NOT_FOUND.formatted(twitchUsername), ctx.chatId());
                         }
                     } catch (IllegalStateException exception) {
-                        silent.send("Please enter the username of the streamer after the command.", ctx.chatId());
+                        silent.send(BotMessage.NO_USERNAME_WAS_FOUND, ctx.chatId());
                     }
                 })
                 .build();
@@ -68,9 +70,9 @@ public class TwinifyBot extends AbilityBot {
                     try {
                         var channelId = ctx.firstArg();
                         streamService.addChannelIdToGroup(ctx.chatId(), channelId);
-                        silent.send("Channel added. Group notifications are also sent to this channel.", ctx.chatId());
+                        silent.send(BotMessage.TELEGRAM_CHANNEL_ADDED, ctx.chatId());
                     } catch (IllegalStateException exception) {
-                        silent.send("Please enter the channel id after the command.", ctx.chatId());
+                        silent.send("Please enter the channel id after the command", ctx.chatId());
                     }
                 })
                 .build();
@@ -92,13 +94,12 @@ public class TwinifyBot extends AbilityBot {
                         if (!userList.isEmpty()) {
                             var twitchId = userList.getFirst().getId();
                             streamService.removeGroup(twitchId, ctx.chatId());
-                            silent.send("Twitch live notification has been deactivated for this group.", ctx.chatId());
+                            silent.send(BotMessage.TWITCH_NOTIFICATION_REMOVED, ctx.chatId());
                         } else {
-                            silent.send("No Twitch user found with this username: %s".formatted(twitchUsername), ctx.chatId());
+                            silent.send(BotMessage.TWITCH_USERNAME_NOT_FOUND.formatted(twitchUsername), ctx.chatId());
                         }
-                        silent.send("The remove command is currently disabled. If necessary, remove the bot from the group.", ctx.chatId());
                     } catch (IllegalStateException exception) {
-                        silent.send("Please enter the username of the streamer after the command.", ctx.chatId());
+                        silent.send(BotMessage.NO_USERNAME_WAS_FOUND, ctx.chatId());
                     }
                 })
                 .build();
@@ -126,11 +127,12 @@ public class TwinifyBot extends AbilityBot {
                                     .getStreams();
                             if (!streamList.isEmpty()) {
                                 var stream = streamList.getFirst();
-                                var caption = MessageTemplate.STREAM_LIVE.formatted(
+                                var caption = MessageTemplate.STREAM_LIVE_STATUS.formatted(
                                         stream.getUserName(),
                                         stream.getTitle(),
                                         stream.getGameName(),
                                         stream.getViewerCount(),
+                                        TimeUtil.formatUptime(stream.getUptime()),
                                         stream.getUserLogin());
 
                                 telegramClient.executeAsync(
@@ -141,13 +143,13 @@ public class TwinifyBot extends AbilityBot {
                                                 .build()
                                 );
                             } else {
-                                silent.send("Sorry, %s is not live right now".formatted(displayName), ctx.chatId());
+                                silent.send(BotMessage.STREAM_NOT_LIVE.formatted(displayName), ctx.chatId());
                             }
                         } else {
-                            silent.send("No Twitch user found with this username: %s".formatted(twitchUsername), ctx.chatId());
+                            silent.send(BotMessage.TWITCH_USERNAME_NOT_FOUND.formatted(twitchUsername), ctx.chatId());
                         }
                     } catch (IllegalStateException exception) {
-                        silent.send("Please enter the username of the streamer after the command.", ctx.chatId());
+                        silent.send(BotMessage.NO_USERNAME_WAS_FOUND, ctx.chatId());
                     }
                 })
                 .build();
