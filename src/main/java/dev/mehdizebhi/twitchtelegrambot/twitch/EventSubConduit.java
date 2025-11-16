@@ -1,4 +1,4 @@
-package dev.mehdizebhi.twitchtelegrambot.internal;
+package dev.mehdizebhi.twitchtelegrambot.twitch;
 
 import com.github.twitch4j.TwitchClient;
 import com.github.twitch4j.eventsub.socket.IEventSubConduit;

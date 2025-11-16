@@ -10,7 +10,10 @@ import java.util.Set;
 public class Stream {
 
     @Id
-    private String twitchId;
+    private String streamId;
+
+    @Enumerated(EnumType.STRING)
+    private StreamType type;
 
     @ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.REMOVE, CascadeType.MERGE, CascadeType.PERSIST})
     @JoinTable(
@@ -25,23 +28,25 @@ public class Stream {
 
     public Stream() {}
 
-    public Stream(String twitchId, Set<TelegramGroup> groups) {
-        this.twitchId = twitchId;
+    public Stream(String streamId, Set<TelegramGroup> groups, StreamType type) {
+        this.streamId = streamId;
         this.groups = groups;
+        this.type = type;
     }
 
-    public Stream(String twitchId, Set<TelegramGroup> groups, Set<EventSubscription> subscriptions) {
-        this.twitchId = twitchId;
+    public Stream(String streamId, Set<TelegramGroup> groups, Set<EventSubscription> subscriptions, StreamType type) {
+        this.streamId = streamId;
         this.groups = groups;
         this.subscriptions = subscriptions;
+        this.type = type;
     }
 
-    public String getTwitchId() {
-        return twitchId;
+    public String getStreamId() {
+        return streamId;
     }
 
-    public void setTwitchId(String twitchId) {
-        this.twitchId = twitchId;
+    public void setStreamId(String twitchId) {
+        this.streamId = twitchId;
     }
 
     public Set<TelegramGroup> getGroups() {
@@ -58,6 +63,14 @@ public class Stream {
 
     public void setSubscriptions(Set<EventSubscription> subscriptions) {
         this.subscriptions = subscriptions;
+    }
+
+    public StreamType getType() {
+        return type;
+    }
+
+    public void setType(StreamType type) {
+        this.type = type;
     }
 
     public void addGroup(TelegramGroup group) {

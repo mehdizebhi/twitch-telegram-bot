@@ -3,7 +3,10 @@ package dev.mehdizebhi.twitchtelegrambot.bot;
 import com.github.twitch4j.TwitchClient;
 import dev.mehdizebhi.twitchtelegrambot.constant.BotMessage;
 import dev.mehdizebhi.twitchtelegrambot.constant.MessageTemplate;
-import dev.mehdizebhi.twitchtelegrambot.internal.StreamService;
+import dev.mehdizebhi.twitchtelegrambot.kick.KickTokenManager;
+import dev.mehdizebhi.twitchtelegrambot.persistence.entity.StreamType;
+import dev.mehdizebhi.twitchtelegrambot.service.StreamService;
+import dev.mehdizebhi.twitchtelegrambot.kick.KickClient;
 import dev.mehdizebhi.twitchtelegrambot.util.TimeUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -15,6 +18,8 @@ import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Component
@@ -22,15 +27,21 @@ public class TwinifyBot extends AbilityBot {
 
     private final TwitchClient twitchClient;
     private final StreamService streamService;
+    private final KickClient kickClient;
+    private final KickTokenManager kickTokenManager;
 
     public TwinifyBot(
             TwitchClient twitchClient,
             StreamService streamService,
+            KickClient kickClient,
+            KickTokenManager kickTokenManager,
             @Value("${telegram.bot-token}") String botToken,
             @Value("${telegram.bot-username}") String botUsername) {
         super(new OkHttpTelegramClient(botToken), botUsername);
         this.twitchClient = twitchClient;
         this.streamService = streamService;
+        this.kickClient = kickClient;
+        this.kickTokenManager = kickTokenManager;
     }
 
     public Ability add() {
@@ -48,31 +59,13 @@ public class TwinifyBot extends AbilityBot {
                                 .getUsers();
                         if (!userList.isEmpty()) {
                             var twitchId = userList.getFirst().getId();
-                            streamService.addGroup(twitchId, ctx.chatId());
+                            streamService.addGroup(twitchId, ctx.chatId(), StreamType.TWITCH);
                             silent.send(BotMessage.TWITCH_NOTIFICATION_ADDED.formatted(userList.getFirst().getDisplayName()), ctx.chatId());
                         } else {
                             silent.send(BotMessage.TWITCH_USERNAME_NOT_FOUND.formatted(twitchUsername), ctx.chatId());
                         }
                     } catch (IllegalStateException exception) {
                         silent.send(BotMessage.NO_USERNAME_WAS_FOUND, ctx.chatId());
-                    }
-                })
-                .build();
-    }
-
-    public Ability channel() {
-        return Ability.builder()
-                .name("channel")
-                .info("add channel to telegram group")
-                .locality(Locality.GROUP)
-                .privacy(Privacy.GROUP_ADMIN)
-                .action(ctx -> {
-                    try {
-                        var channelId = ctx.firstArg();
-                        streamService.addChannelIdToGroup(ctx.chatId(), channelId);
-                        silent.send(BotMessage.TELEGRAM_CHANNEL_ADDED, ctx.chatId());
-                    } catch (IllegalStateException exception) {
-                        silent.send("Please enter the channel id after the command", ctx.chatId());
                     }
                 })
                 .build();
@@ -150,6 +143,115 @@ public class TwinifyBot extends AbilityBot {
                         }
                     } catch (IllegalStateException exception) {
                         silent.send(BotMessage.NO_USERNAME_WAS_FOUND, ctx.chatId());
+                    }
+                })
+                .build();
+    }
+
+    public Ability addKick() {
+        return Ability.builder()
+                .name("kicka")
+                .info("add kick channel to telegram group")
+                .locality(Locality.GROUP)
+                .privacy(Privacy.GROUP_ADMIN)
+                .action(ctx -> {
+                    try {
+                        var kickUsername = ctx.firstArg();
+                        var response = kickClient.getChannelBySlug(kickUsername, kickTokenManager.getAccessToken());
+                        if (!response.data().isEmpty()) {
+                            var kickId = response.data().getFirst().broadcasterUserId();
+                            streamService.addGroup(String.valueOf(kickId), ctx.chatId(), StreamType.KICK);
+                            silent.send(BotMessage.KICK_NOTIFICATION_ADDED.formatted(response.data().getFirst().slug()), ctx.chatId());
+                        } else {
+                            silent.send(BotMessage.KICK_USERNAME_NOT_FOUND.formatted(kickUsername), ctx.chatId());
+                        }
+                    } catch (IllegalStateException exception) {
+                        exception.printStackTrace();
+                        silent.send(BotMessage.NO_USERNAME_WAS_FOUND, ctx.chatId());
+                    }
+                })
+                .build();
+    }
+
+    public Ability removeKick() {
+        return Ability.builder()
+                .name("kickr")
+                .info("remove kick channel from telegram group")
+                .locality(Locality.GROUP)
+                .privacy(Privacy.GROUP_ADMIN)
+                .action(ctx -> {
+                    try {
+                        var kickUsername = ctx.firstArg();
+                        var response = kickClient.getChannelBySlug(kickUsername, kickTokenManager.getAccessToken());
+                        if (!response.data().isEmpty()) {
+                            var kickId = response.data().getFirst().broadcasterUserId();
+                            streamService.removeGroup(String.valueOf(kickId), ctx.chatId());
+                            silent.send(BotMessage.KICK_NOTIFICATION_REMOVED, ctx.chatId());
+                        } else {
+                            silent.send(BotMessage.KICK_USERNAME_NOT_FOUND.formatted(kickUsername), ctx.chatId());
+                        }
+                    } catch (IllegalStateException exception) {
+                        silent.send(BotMessage.NO_USERNAME_WAS_FOUND, ctx.chatId());
+                    }
+                })
+                .build();
+    }
+
+    public Ability statusKick() {
+        return Ability.builder()
+                .name("kicks")
+                .info("check status of specific kick channel")
+                .locality(Locality.GROUP)
+                .privacy(Privacy.PUBLIC)
+                .action(ctx -> {
+                    try {
+                        var kickUsername = ctx.firstArg();
+                        var response = kickClient.getChannelBySlug(kickUsername, kickTokenManager.getAccessToken());
+                        if (!response.data().isEmpty()) {
+                            var channel = response.data().getFirst();
+                            if (channel.stream().isLive()) {
+
+                                var caption = MessageTemplate.KICK_STREAM_LIVE_STATUS.formatted(
+                                        channel.slug(),
+                                        channel.streamTitle(),
+                                        channel.category().name(),
+                                        channel.stream().viewerCount(),
+                                        TimeUtil.formatUptime(Duration.between(channel.stream().startTime().toInstant(), OffsetDateTime.now().toInstant())),
+                                        channel.slug());
+
+                                telegramClient.executeAsync(
+                                        SendPhoto.builder()
+                                                .chatId(ctx.chatId())
+                                                .photo(new InputFile(channel.stream().thumbnail()))
+                                                .caption(caption)
+                                                .build()
+                                );
+                            } else {
+                                silent.send(BotMessage.STREAM_NOT_LIVE.formatted(kickUsername), ctx.chatId());
+                            }
+                        } else {
+                            silent.send(BotMessage.KICK_USERNAME_NOT_FOUND.formatted(kickUsername), ctx.chatId());
+                        }
+                    } catch (IllegalStateException exception) {
+                        silent.send(BotMessage.NO_USERNAME_WAS_FOUND, ctx.chatId());
+                    }
+                })
+                .build();
+    }
+
+    public Ability channel() {
+        return Ability.builder()
+                .name("channel")
+                .info("add channel to telegram group")
+                .locality(Locality.GROUP)
+                .privacy(Privacy.GROUP_ADMIN)
+                .action(ctx -> {
+                    try {
+                        var channelId = ctx.firstArg();
+                        streamService.addChannelIdToGroup(ctx.chatId(), channelId);
+                        silent.send(BotMessage.TELEGRAM_CHANNEL_ADDED, ctx.chatId());
+                    } catch (IllegalStateException exception) {
+                        silent.send("Please enter the channel id after the command", ctx.chatId());
                     }
                 })
                 .build();

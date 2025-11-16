@@ -9,5 +9,5 @@ import java.util.Optional;
 @Repository
 public interface StreamRepository extends JpaRepository<Stream, String> {
 
-    Optional<Stream> findByTwitchId(String twitchId);
+    Optional<Stream> findByStreamId(String twitchId);
 }

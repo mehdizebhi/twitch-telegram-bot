@@ -18,4 +18,21 @@ public class MessageTemplate {
             Uptime: %s
             Link: https://twitch.tv/%s
             """;
+
+    public static final String KICK_STREAM_LIVE = """
+            %s is now live on Kick!
+            %s
+            Game: %s
+            Viewers: %s
+            Link: https://kick.com/%s
+            """;
+
+    public static final String KICK_STREAM_LIVE_STATUS = """
+            %s is now live on Kick!
+            %s
+            Game: %s
+            Viewers: %s
+            Uptime: %s
+            Link: https://kick.com/%s
+            """;
 }

@@ -12,7 +12,7 @@ public class EventSubscription {
     private String name;
 
     @ManyToOne
-    @JoinColumn(name = "twitch_id", nullable = false)
+    @JoinColumn(name = "stream_id", nullable = false)
     private Stream stream;
 
     public EventSubscription() {
