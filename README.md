@@ -1,6 +1,6 @@
-# 🎮 Twinify (Twitch Telegram Bot)
+# 🎮 Twinify (Twitch & Kick Telegram Bot)
 
-A Telegram bot for sending live stream notifications from Twitch  
+A Telegram bot for sending live stream notifications from Twitch and Kick 
 Built with **Java 21**, **Spring Boot**, and **SQLite**
 
 ## ✨ About the Project
@@ -50,3 +50,4 @@ If you prefer to run the bot locally without Docker:
 ./mvnw spring-boot:run \
   -Dspring-boot.run.jvmArguments="-DTELEGRAM_BOT_TOKEN=<your-token> -DTELEGRAM_BOT_USERNAME=<your-bot-username> -DTWITCH_CLIENT_ID=<your-id> -DTWITCH_CLIENT_SECRET=<your-secret>"
 ```
+
